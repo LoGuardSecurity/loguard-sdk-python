@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["loguard"]
+
+[project]
+name = "loguard"
+version = "2.1.0"
+description = "Official Python SDK for LoGuard security monitoring and threat detection."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT" }
+keywords = ["security", "monitoring", "threat-detection", "sdk"]
+
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+]
+
+dependencies = [
+    "httpx>=0.25.0",
+]
+
+[project.optional-dependencies]
+fastapi = [
+    "starlette>=0.27.0",
+]
+
+django = [
+    "django>=3.2",
+]
+
+dev = [
+    "pytest>=7",
+    "pytest-asyncio",
+    "respx",
+    "httpx",
+]
+
+[project.urls]
+Homepage = "https://loguard.org"
+Repository = "https://github.com/LoGuardSecurity/loguard-sdk-python"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+markers = [
+    "integration: tests requiring loguard-daemon running",
+]
