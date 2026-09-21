@@ -2,13 +2,10 @@
 LoGuard Python SDK
 ~~~~~~~~~~~~~~~~~~~
 
-Official Python SDK for LoGuard — lightweight security event tracking
-with user-defined alert rules.
+Official Python SDK for LoGuard — lightweight security event tracking.
 
 Quick start:
     from loguard import monitor
-    from loguard.models import AlertRule, AlertCondition
-
     monitor.init(api_key="lg_live_xxx", env="production")
 
     # Track events
@@ -16,17 +13,6 @@ Quick start:
 
     # Fire-and-forget (non-blocking, for production traffic)
     monitor.event_fire_and_forget(type="http_error", ip="1.2.3.4", path="/api", status_code=500)
-
-    # Create an alert rule
-    rule = monitor.alerts.create(AlertRule(
-        name="Brute force",
-        conditions=[
-            AlertCondition(field="type",            op="eq",  value="login_failed"),
-            AlertCondition(field="rate_per_minute", op="gt",  value=10),
-        ],
-        severity="high",
-        actions=["notify", "block"],
-    ))
 
 Docs: https://docs.loguard.org/sdk/python
 """
@@ -38,8 +24,6 @@ except Exception:
 
 from .monitor import monitor
 from .models import (
-    AlertCondition,
-    AlertRule,
     AlertOut,
     Event,
     IngestResult,
@@ -65,8 +49,6 @@ __all__ = [
     "IngestResult",
     "AlertOut",
     "UsageInfo",
-    "AlertRule",
-    "AlertCondition",
     # Exceptions
     "LoGuardError",
     "LoGuardNotInitializedError",

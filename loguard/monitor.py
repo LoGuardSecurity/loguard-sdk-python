@@ -17,8 +17,6 @@ from .exceptions import (
     LoGuardValidationError,
 )
 from .models import (
-    AlertCondition,
-    AlertRule,
     Event,
     IngestResult,
 )
@@ -45,18 +43,6 @@ class _Monitor:
 
         # Track an event
         monitor.event(type="login_failed", ip="1.2.3.4", path="/login", status_code=401)
-
-        # Create a custom alert rule
-        from loguard.models import AlertRule, AlertCondition
-        rule = monitor.alerts.create(AlertRule(
-            name="Brute force",
-            conditions=[
-                AlertCondition(field="type", op="eq", value="login_failed"),
-                AlertCondition(field="rate_per_minute", op="gt", value=10),
-            ],
-            severity="high",
-            actions=["notify", "block"],
-        ))
     """
 
     def __init__(self):
@@ -70,9 +56,6 @@ class _Monitor:
         self._faf_q: "queue.Queue[Event]" = queue.Queue(maxsize=_FAF_QUEUE_MAX)
         self._faf_thread: Optional[threading.Thread] = None
         self._faf_stop = threading.Event()
-
-        # Sub-client — available after init()
-        self.alerts: _AlertsClient = _AlertsClient(self)
 
     # Init
 
@@ -358,152 +341,6 @@ class _Monitor:
                     self._send_events_sync(batch)
                 except LoGuardError:
                     continue
-
-
-# Alerts sub-client
-
-class _AlertsClient:
-    """
-    Manage user-defined alert rules.
-
-    Access via:  monitor.alerts
-
-    Example:
-        from loguard.models import AlertRule, AlertCondition
-
-        # Create a rule that fires when an IP makes >10 failed logins/min
-        rule = monitor.alerts.create(AlertRule(
-            name="Brute force",
-            conditions=[
-                AlertCondition(field="type",           op="eq",  value="login_failed"),
-                AlertCondition(field="rate_per_minute", op="gt", value=10),
-            ],
-            severity="high",
-            actions=["notify", "block"],
-        ))
-        print(rule.id)  # assigned by server
-
-        # List all rules
-        rules = monitor.alerts.list()
-
-        # Update
-        rule.enabled = False
-        monitor.alerts.update(rule)
-
-        # Delete
-        monitor.alerts.delete(rule.id)
-    """
-
-    def __init__(self, mon: "_Monitor"):
-        self._mon = mon
-
-    def _url(self, rule_id: Optional[int] = None) -> str:
-        base = f"{self._mon._base_url}/v1/alert-rules"
-        return f"{base}/{rule_id}" if rule_id is not None else base
-
-    # Sync
-
-    def create(self, rule: AlertRule) -> AlertRule:
-        """Create a new alert rule. Returns the rule with server-assigned id."""
-        self._mon._assert_initialized()
-        data = _t.send_sync(
-            self._url(), self._mon._headers,
-            rule.to_dict(), self._mon._timeout, self._mon._retries,
-        )
-        return AlertRule.from_dict(data if isinstance(data, dict) else {})
-
-    def list(self) -> List[AlertRule]:
-        """List all alert rules for this project."""
-        self._mon._assert_initialized()
-        data = _t.send_sync_no_body(
-            self._url(), self._mon._headers,
-            self._mon._timeout, self._mon._retries, method="GET",
-        )
-        items = data if isinstance(data, list) else (data or {}).get("rules", [])
-        return [AlertRule.from_dict(d) for d in (items or [])]
-
-    def get(self, rule_id: int) -> AlertRule:
-        """Fetch a single alert rule by ID."""
-        self._mon._assert_initialized()
-        data = _t.send_sync_no_body(
-            self._url(rule_id), self._mon._headers,
-            self._mon._timeout, self._mon._retries, method="GET",
-        )
-        return AlertRule.from_dict(data if isinstance(data, dict) else {})
-
-    def update(self, rule: AlertRule) -> AlertRule:
-        """Update an existing alert rule (rule.id must be set)."""
-        self._mon._assert_initialized()
-        if rule.id is None:
-            raise LoGuardValidationError("rule.id is required to update")
-        data = _t.send_sync(
-            self._url(rule.id), self._mon._headers,
-            rule.to_dict(), self._mon._timeout, self._mon._retries,
-            method="PUT",
-        )
-        return AlertRule.from_dict(data if isinstance(data, dict) else {})
-
-    def delete(self, rule_id: int) -> None:
-        """Delete an alert rule by ID."""
-        self._mon._assert_initialized()
-        _t.send_sync_no_body(
-            self._url(rule_id), self._mon._headers,
-            self._mon._timeout, self._mon._retries, method="DELETE",
-        )
-
-    def enable(self, rule_id: int) -> AlertRule:
-        """Enable an alert rule."""
-        rule = self.get(rule_id)
-        rule.enabled = True
-        return self.update(rule)
-
-    def disable(self, rule_id: int) -> AlertRule:
-        """Disable an alert rule without deleting it."""
-        rule = self.get(rule_id)
-        rule.enabled = False
-        return self.update(rule)
-
-    # Async
-
-    async def acreate(self, rule: AlertRule) -> AlertRule:
-        """Async version of create()."""
-        self._mon._assert_initialized()
-        data = await _t.send_async(
-            self._url(), self._mon._headers,
-            rule.to_dict(), self._mon._timeout, self._mon._retries,
-        )
-        return AlertRule.from_dict(data if isinstance(data, dict) else {})
-
-    async def alist(self) -> List[AlertRule]:
-        """Async version of list()."""
-        self._mon._assert_initialized()
-        data = await _t.send_async_no_body(
-            self._url(), self._mon._headers,
-            self._mon._timeout, self._mon._retries, method="GET",
-        )
-        items = data if isinstance(data, list) else (data or {}).get("rules", [])
-        return [AlertRule.from_dict(d) for d in (items or [])]
-
-    async def aupdate(self, rule: AlertRule) -> AlertRule:
-        """Async version of update()."""
-        self._mon._assert_initialized()
-        if rule.id is None:
-            raise LoGuardValidationError("rule.id is required to update")
-        data = await _t.send_async(
-            self._url(rule.id), self._mon._headers,
-            rule.to_dict(), self._mon._timeout, self._mon._retries,
-            method="PUT",
-        )
-        return AlertRule.from_dict(data if isinstance(data, dict) else {})
-
-    async def adelete(self, rule_id: int) -> None:
-        """Async version of delete()."""
-        self._mon._assert_initialized()
-        await _t.send_async_no_body(
-            self._url(rule_id), self._mon._headers,
-            self._mon._timeout, self._mon._retries, method="DELETE",
-        )
-
 
 # Singleton
 monitor = _Monitor()
