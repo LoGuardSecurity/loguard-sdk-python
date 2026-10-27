@@ -50,23 +50,22 @@ def _raise_for_status(resp: httpx.Response) -> Any:
         detail = d.get("detail", snippet)
         if detail == "subscription_expired":
             raise LoGuardAuthError("Subscription expired — renew at loguard.org")
-        raise LoGuardAuthError(f"Access denied: {detail}")
+        raise LoGuardAuthError("Access denied")
     if resp.status_code == 404:
-        raise LoGuardNotFoundError(f"Not found: {d.get('detail', snippet)}")
+        raise LoGuardNotFoundError("Not found")
     if resp.status_code == 409:
-        raise LoGuardConflictError(f"Conflict: {d.get('detail', snippet)}")
+        raise LoGuardConflictError("Conflict")
     if resp.status_code == 422:
-        raise LoGuardValidationError(f"Validation error: {snippet}")
+        raise LoGuardValidationError("Validation error")
     if resp.status_code == 429:
         detail = d.get("detail", {})
         if isinstance(detail, dict) and detail.get("err") == "usage_limit_exceeded":
             raise LoGuardQuotaError(
-                f"Monthly quota exceeded: {detail.get('used')}/{detail.get('limit')} "
-                f"events on plan '{detail.get('plan')}'. Upgrade at loguard.org"
+                "Monthly quota exceeded"
             )
-        raise LoGuardConnectionError(f"Rate limited: {snippet}")
+        raise LoGuardConnectionError("Rate limited")
     if resp.status_code >= 500:
-        raise LoGuardConnectionError(f"Server error ({resp.status_code}): {snippet}")
+        raise LoGuardConnectionError(f"Server error ({resp.status_code})")
 
     return data
 
@@ -122,8 +121,8 @@ def send_sync(
             log.warning("Attempt %d/%d failed status=%d", attempt, retries, resp.status_code)
 
         except (httpx.RequestError, httpx.TimeoutException) as e:
-            last_exc = LoGuardConnectionError(f"Connection error: {e!r}")
-            log.warning("Attempt %d/%d connection error: %r", attempt, retries, e)
+            last_exc = LoGuardConnectionError("Connection error")
+            log.warning("Attempt %d/%d connection error", attempt, retries)
 
         if attempt < retries:
             time.sleep(0.4 * attempt)
@@ -149,7 +148,7 @@ def send_sync_no_body(
                 return _raise_for_status(resp)
             last_exc = LoGuardConnectionError(f"Server error {resp.status_code}")
         except (httpx.RequestError, httpx.TimeoutException) as e:
-            last_exc = LoGuardConnectionError(f"Connection error: {e!r}")
+            last_exc = LoGuardConnectionError("Connection error")
         if attempt < retries:
             time.sleep(0.4 * attempt)
     raise last_exc
@@ -182,7 +181,7 @@ async def send_async(
             last_exc = LoGuardConnectionError(f"Server error {resp.status_code}")
 
         except (httpx.RequestError, httpx.TimeoutException) as e:
-            last_exc = LoGuardConnectionError(f"Connection error: {e!r}")
+            last_exc = LoGuardConnectionError("Connection error")
 
         if attempt < retries:
             await asyncio.sleep(0.4 * attempt)
@@ -207,7 +206,7 @@ async def send_async_no_body(
                 return _raise_for_status(resp)
             last_exc = LoGuardConnectionError(f"Server error {resp.status_code}")
         except (httpx.RequestError, httpx.TimeoutException) as e:
-            last_exc = LoGuardConnectionError(f"Connection error: {e!r}")
+            last_exc = LoGuardConnectionError("Connection error")
         if attempt < retries:
             await asyncio.sleep(0.4 * attempt)
     raise last_exc
