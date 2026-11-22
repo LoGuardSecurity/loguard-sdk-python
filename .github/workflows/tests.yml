@@ -1,0 +1,37 @@
+name: SDK compatibility
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15']
+        dependencies: [current, baseline]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e '.[dev,fastapi,django]' ruff
+      - if: matrix.dependencies == 'baseline'
+        run: python -m pip install 'starlette==0.27.0' 'Django>=5.2.8,<5.3' 'httpx==0.27.2'
+      - run: python -m ruff check .
+      - run: python -m pytest -q
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: python -m pip install build twine
+      - run: python -m build
+      - run: python -m twine check dist/*
+      - run: python -m venv /tmp/loguard-wheel-check
+      - run: /tmp/loguard-wheel-check/bin/python -m pip install dist/*.whl
+      - run: cd /tmp && /tmp/loguard-wheel-check/bin/python -c 'import loguard; from loguard._signing import sign; assert sign("test", b"{}")[1]["User-Agent"].endswith(loguard.__version__)'

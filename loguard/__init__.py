@@ -16,11 +16,7 @@ Quick start:
 
 Docs: https://docs.loguard.org/sdk/python
 """
-try:
-    from importlib.metadata import version
-    __version__ = version("loguard")
-except Exception:
-    __version__ = "2.1.0"
+from ._version import __version__
 
 from .monitor import monitor
 from .models import (

@@ -17,6 +17,8 @@ import time
 import uuid
 from typing import Tuple
 
+from ._version import __version__
+
 
 def sign(api_key: str, body_bytes: bytes) -> Tuple[bytes, dict]:
     """
@@ -44,7 +46,7 @@ def sign(api_key: str, body_bytes: bytes) -> Tuple[bytes, dict]:
         "X-LoGuard-Signature":   f"sha256={signature}",
         "X-Request-ID":           str(uuid.uuid4()),
         "Content-Type":           "application/json",
-        "User-Agent":             "loguard-python-sdk/2.0.0",
+        "User-Agent":             f"loguard-python-sdk/{__version__}",
     }
     return body_bytes, headers
 

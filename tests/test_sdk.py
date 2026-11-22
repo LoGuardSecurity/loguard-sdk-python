@@ -1,7 +1,7 @@
 """
 LoGuard SDK v2 — unit tests
 Run: pytest tests/ -v
-Live tests: LOGUARD_API_KEY=lg_... LOGUARD_BASE_URL=http://... pytest -v -k Live
+Live tests: set LOGUARD_API_KEY and LOGUARD_BASE_URL, then run pytest -m integration tests/test_sdk.py::TestLive
 """
 from __future__ import annotations
 
@@ -25,7 +25,12 @@ from loguard.monitor import _Monitor
 def fresh_monitor():
     """Give each test a fresh monitor instance."""
     m = _Monitor()
-    yield m
+    # API tests mock the transport; background delivery is tested separately.
+    with patch.object(m, "_faf_worker"):
+        yield m
+    m._faf_stop.set()
+    if m._faf_thread:
+        m._faf_thread.join(timeout=1)
 
 
 def make_ingest_resp(inserted=1):
@@ -130,23 +135,27 @@ async def test_aevent_success(fresh_monitor):
 
 
 # Live tests (skipped unless env vars set)
+@pytest.mark.integration
 class TestLive:
     """Live integration tests — require real server."""
 
     @pytest.fixture(autouse=True)
     def skip_without_key(self):
-        if not os.getenv("LOGGUARD_API_KEY"):
-            pytest.skip("LOGGUARD_API_KEY not set")
+        if not os.getenv("LOGUARD_API_KEY") or not os.getenv("LOGUARD_BASE_URL"):
+            pytest.skip("Set LOGUARD_API_KEY and LOGUARD_BASE_URL for an explicit live check")
 
     @pytest.fixture(autouse=True)
     def live_monitor(self, skip_without_key):
         from loguard.monitor import _Monitor
         m = _Monitor()
         m.init(
-            api_key=os.environ["LOGGUARD_API_KEY"],
-            base_url=os.getenv("LOGGUARD_BASE_URL", "https://api.logguard.io"),
+            api_key=os.environ["LOGUARD_API_KEY"],
+            base_url=os.environ["LOGUARD_BASE_URL"],
         )
-        return m
+        try:
+            yield m
+        finally:
+            m.shutdown(2)
 
     def test_live_event(self, live_monitor):
         result = live_monitor.event(
