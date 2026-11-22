@@ -7,10 +7,10 @@ packages = ["loguard"]
 
 [project]
 name = "loguard"
-version = "2.1.0"
+dynamic = ["version"]
 description = "Official Python SDK for LoGuard security monitoring and threat detection."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 keywords = ["security", "monitoring", "threat-detection", "sdk"]
 
@@ -18,12 +18,17 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Security",
 ]
 
 dependencies = [
-    "httpx>=0.25.0",
+    "httpx>=0.27.2",
 ]
 
 [project.optional-dependencies]
@@ -33,6 +38,7 @@ fastapi = [
 
 django = [
     "django>=3.2",
+    "asgiref>=3.7",
 ]
 
 dev = [
@@ -47,8 +53,19 @@ Homepage = "https://loguard.org"
 Repository = "https://github.com/LoGuardSecurity/loguard-sdk-python"
 
 [tool.pytest.ini_options]
+addopts = "-m 'not integration'"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 markers = [
-    "integration: tests requiring loguard-daemon running",
+    "integration: explicit live-service checks requiring configured credentials and endpoint",
 ]
+
+[tool.hatch.version]
+path = "loguard/_version.py"
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
